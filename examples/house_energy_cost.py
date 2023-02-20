@@ -27,15 +27,15 @@ if __name__ == "__main__":
     hot_water_tank = Component("hot water tank", 1000., 0.)
     boiler = Component("boiler", 7000., 100., BOILER_EFFICIENCY)
 
-    energy_items = [EnergyItem(CONSUMED_KWH_PER_YEAR_HEATING, boiler, gas_cost),
-                    EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]
+    energy_items_1 = [EnergyItem(CONSUMED_KWH_PER_YEAR_HEATING, boiler, gas_cost),
+                  EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]
 
-    # total_cost = compute_cost(energy_items, DURATION_YEARS)
+    total_cost_1 = compute_cost(energy_items_1, DURATION_YEARS, show=False)
 
     energy_items_2 = [EnergyItem(PRODUCED_KWH_PER_YEAR_HEATING, heat_pump, electricity_cost, is_produced=True),
-                      EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]
+                       EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]
 
-    # compute_cost(energy_items_2, DURATION_YEARS)
+    compute_cost(energy_items_2, DURATION_YEARS, show=False)
 
     # Compare scenarios
-    compute_cost(energy_items + energy_items_2, DURATION_YEARS)
+    compute_cost(energy_items_1 + energy_items_2, DURATION_YEARS)
