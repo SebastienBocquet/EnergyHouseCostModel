@@ -137,7 +137,7 @@ def plot_integrated_cost_per_component(component_names, cost_per_year_per_compon
     rows = np.linspace(0, duration_years - 1, duration_years)
 
     # Get some pastel shades for the colors
-    colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
+    colors = plt.cm.BuPu(np.linspace(0.1, 0.5, len(rows)))
     n_rows = len(cost_per_year_per_component)
 
     index = np.arange(len(columns)) + 0.3
