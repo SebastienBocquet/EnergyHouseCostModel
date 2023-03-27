@@ -44,13 +44,11 @@ class EnergyItem:
     is_produced: bool = False
 
     def __repr__(self):
+        energy_consumed = self.component.energy_consumption(self.energy_value, self.is_produced)
         energy_produced_or_consumed = "Consumed"
         if self.is_produced:
             energy_produced_or_consumed = "Produced"
-            if self.component.production_over_consumption_ratio is not None:
-                energy_consumed = self.energy_value / self.component.production_over_consumption_ratio
-                return f"Produced {self.energy_value} kWh, consumed {energy_consumed} kWh of {self.energy_cost} by a {self.component}"
-        return f"{energy_produced_or_consumed} {self.energy_value} kWh of {self.energy_cost} by a {self.component}"
+        return f"{energy_produced_or_consumed} {energy_consumed} kWh of {self.energy_cost} by a {self.component}"
 
 
 class PV(Component):

@@ -14,7 +14,8 @@ class EnergyCostProjection():
             profile_type: str,
             slope: float = 0.,
             percentage_of_increase_per_year: float = 0.,
-            curve: tuple[NDArray, NDArray] | None = None):
+            curve: tuple[NDArray, NDArray] | None = None,
+            injected_price_per_kwh = 0.):
         """
         Args:
             initial_cost_one_kwh: current cost of one kWh of energy.
@@ -32,6 +33,7 @@ class EnergyCostProjection():
         self.slope = slope
         self.percentage_of_increase_per_year = percentage_of_increase_per_year
         self.curve = curve
+        self.injected_price_per_kwh = injected_price_per_kwh
 
     def compute_linear_profile_value(self, year):
         return self.initial_cost_one_kwh + self.slope * year
@@ -74,6 +76,13 @@ class EnergyCostProjection():
             raise ValueError("The profile type should be 'linear', 'power' or 'curve'.")
         return energy_kwh * price_one_kwh_at_year_n
 
+    def compute_injected(
+            self,
+            year_n: int,
+            energy_kwh: float
+    ):
+        return self.injected_price_per_kwh * energy_kwh
+
     def __repr__(self):
         return f"{self.energy_name}"
 
@@ -106,18 +115,18 @@ def component_integrated_cost(energy_item, duration_years):
 
     """
     energy_kwh = energy_item.component.energy_consumption(energy_item.energy_value, energy_item.is_produced)
-    integrated_energy_cost = 0.
-    cost_evolution = np.empty((duration_years))
+    energy_kwh_injected = energy_item.component.injected_energy()
+    cost_evolution = np.zeros((duration_years))
+
     for year in range(0, duration_years):
         cost_evolution[year] = energy_item.energy_cost.compute(year, energy_kwh)
+        if energy_item.energy_cost.energy_name == "electricity":
+            cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
         if year > 0:
             cost_evolution[year] += energy_item.component.maintenance_cost_per_year
     cost_evolution[0] += energy_item.component.initial_install_cost
-    for year in range(0, duration_years):
-        integrated_energy_cost += energy_item.energy_cost.compute(year, energy_kwh)
-    total_cost = energy_item.component.initial_install_cost \
-                 + (duration_years - 1) * energy_item.component.maintenance_cost_per_year \
-                 + integrated_energy_cost
+
+    total_cost = np.sum(cost_evolution)
 
     return total_cost, cost_evolution
 
@@ -172,7 +181,8 @@ def compute_cost(energy_items, duration_years, show=True, save=False):
         total_cost_of_component, cost_evolution_of_component = component_integrated_cost(item, duration_years)
         cost_per_year_per_component[:,i] = cost_evolution_of_component
         total_cost += total_cost_of_component
-    print(f"Integrated cost is {total_cost} euros over {duration_years} years.\n Detailed cost is \n{[i for i in energy_items]}")
+    print(f"Integrated cost is {total_cost} euros over {duration_years} years.")
+    print(f"Detailed cost in kWh per year is \n{[i for i in energy_items]}")
 
     if show or save:
         component_names = []
