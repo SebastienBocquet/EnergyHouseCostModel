@@ -35,6 +35,7 @@ class Component(ABC):
     def __repr__(self):
         return self.name
 
+
 @dataclass
 class EnergyItem:
     """An energy item. The energetic profile is defined as a list of energy items."""
@@ -53,12 +54,17 @@ class EnergyItem:
 
 class PV(Component):
 
-    def energy_consumption(self, energy_item):
-        # TODO take into account variation of power per season
-        auto_consumption_ratio = 0.4
+    def __init__(self, name: str, initial_install_cost: float = 0., maintenance_cost: float = 0.):
+        super().__init__(name, initial_install_cost, maintenance_cost, 1.)
+
         sunny_hours = 7.
         max_power_kw = 3.
-        return -auto_consumption_ratio * max_power_kw * sunny_hours * 365
+        self.produced_energy_kwh = sunny_hours * max_power_kw * 365
+        self.auto_consumption_ratio = 0.4
+
+    def energy_consumption(self, energy_value: float, is_produced: bool):
+        # TODO take into account variation of power per season
+        return -self.auto_consumption_ratio * self.produced_energy_kwh
 
     def injected_energy(self):
-        pass
+        return (1 - self.auto_consumption_ratio) * self.produced_energy_kwh
