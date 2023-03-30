@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from EnergyHouseCostModel.energy_cost import EnergyCostProjection
+from EnergyHouseCostModel.uncertain import UncertainParameter
 
 
 class Component(ABC):
+
+    UNCERTAIN_PARAMETERS = {}
 
     def __init__(self, name: str, initial_install_cost: float = 0., maintenance_cost: float = 0., production_over_consumption_ratio: float | None = None):
         self.name = name
@@ -52,7 +55,17 @@ class EnergyItem:
         return f"{energy_produced_or_consumed} {energy_consumed} kWh of {self.energy_cost} by a {self.component}"
 
 
+
+
+
 class PV(Component):
+
+    UNCERTAIN_PARAMETERS = {"auto_consumption_ratio": UncertainParameter(
+        "auto_consumption_ratio",
+        default_value=0.4,
+        min_value=0.3,
+        max_value=0.5
+    )}
 
     def __init__(self, name: str, initial_install_cost: float = 0., maintenance_cost: float = 0.):
         super().__init__(name, initial_install_cost, maintenance_cost, 1.)
@@ -60,7 +73,7 @@ class PV(Component):
         sunny_hours = 7.
         max_power_kw = 3.
         self.produced_energy_kwh = sunny_hours * max_power_kw * 365
-        self.auto_consumption_ratio = 0.4
+        self.auto_consumption_ratio = self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value
 
     def energy_consumption(self, energy_value: float, is_produced: bool):
         # TODO take into account variation of power per season

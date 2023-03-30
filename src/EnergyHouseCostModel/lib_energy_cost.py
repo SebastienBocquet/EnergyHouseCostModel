@@ -1,9 +1,12 @@
 import numpy as np
 
 from EnergyHouseCostModel.energy_cost import EnergyCostProjection
+from EnergyHouseCostModel.uncertain import UncertainParameter
 
 
 def electricity_cost(duration_years):
+
+    UNCERTAIN_PARAMETERS = {"electricity_cost_axis": UncertainParameter()}
     CURRENT_ELECTRICITY_COST_ONE_KWH = 0.2062
 
     electricity_cost_axis = np.array([0.22, 0.25, 0.28])
