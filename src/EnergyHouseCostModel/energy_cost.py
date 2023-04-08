@@ -102,6 +102,18 @@ class EnergyCostProjection():
             plt.close()
 
 
+class EnergyCost:
+
+    UNCERTAIN_PARAMETERS = {}
+
+    def __init__(self, duration_years: int):
+        self.duration_years = duration_years
+        self.cost = None
+
+    def update(self):
+        """"""
+
+
 def component_integrated_cost(energy_item, duration_years):
     """Computes the integrated cost in euros over ``duration_years`` of an energy item.
 
@@ -119,7 +131,7 @@ def component_integrated_cost(energy_item, duration_years):
     cost_evolution = np.zeros((duration_years))
 
     for year in range(0, duration_years):
-        cost_evolution[year] = energy_item.energy_cost.compute(year, energy_kwh)
+        cost_evolution[year] = energy_item.energy_cost.cost.compute(year, energy_kwh)
         if energy_item.energy_cost.energy_name == "electricity":
             cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
         if year > 0:

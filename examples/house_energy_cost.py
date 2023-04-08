@@ -1,10 +1,9 @@
-import numpy as np
-from matplotlib import pyplot as plt
-
 from EnergyHouseCostModel.energetic_components import Component, EnergyItem
 from EnergyHouseCostModel.energetic_components import PV
-from EnergyHouseCostModel.energy_cost import EnergyCostProjection, compute_cost
-from EnergyHouseCostModel.lib_energy_cost import electricity_cost, gas_cost
+from EnergyHouseCostModel.lib_energy_cost import ElectricityCost
+from EnergyHouseCostModel.lib_energy_cost import GasCost
+from EnergyHouseCostModel.uncertain import get_uncertain_parameters
+from EnergyHouseCostModel.uncertain import set_uncertain_parameters
 
 if __name__ == "__main__":
 
@@ -16,8 +15,8 @@ if __name__ == "__main__":
     CONSUMED_KWH_PER_YEAR_HOT_WATER = 3 * 800.
     CURRENT_GAS_COST_ONE_KWH = 0.1043
 
-    electricity_cost = electricity_cost(DURATION_YEARS)
-    gas_cost = gas_cost(DURATION_YEARS)
+    electricity_cost = ElectricityCost(DURATION_YEARS)
+    gas_cost = GasCost(DURATION_YEARS)
 
     heat_pump = Component("heat pump", 15000., 200., HEAT_PUMP_COP)
     hot_water_tank = Component("hot water tank", 1000., 0.)
@@ -28,7 +27,16 @@ if __name__ == "__main__":
         EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost),
         EnergyItem(0., pv, electricity_cost, is_produced=True)]
 
-    total_cost_1 = compute_cost(energy_items_1, DURATION_YEARS, show=True)
+    # total_cost_1 = compute_cost(energy_items_1, DURATION_YEARS, show=True)
+
+    input_data = {}
+    for name, param in get_uncertain_parameters(energy_items_1).items():
+        input_data.update({name: param.value})
+    print(input_data)
+    input_data["percentage_increase"] = 15.
+    set_uncertain_parameters(energy_items_1, input_data)
+    print(input_data)
+
 
     # energy_items_2 = [EnergyItem(PRODUCED_KWH_PER_YEAR_HEATING, heat_pump, electricity_cost, is_produced=True),
     #                    EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]

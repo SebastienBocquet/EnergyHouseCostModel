@@ -1,22 +1,27 @@
 from typing import List
 
-from EnergyHouseCostModel.energetic_components import EnergyItem
 
 
 class UncertainParameter():
 
-    def __init__(self, name, default_value, min_value, max_value):
-        self.name = name
+    def __init__(self, default_value, min_value, max_value):
         self.default_value = default_value
         self.min_value = min_value
         self.max_value = max_value
         self.value = default_value
 
 
-def get_uncertain_parameters(energy_items: List[EnergyItem]):
+def get_uncertain_parameters(energy_items): # List[EnergyItem]):
     uncertain_params = {}
     for e in energy_items:
         uncertain_params.update(e.component.UNCERTAIN_PARAMETERS)
-    for e in energy_items:
         uncertain_params.update(e.energy_cost.UNCERTAIN_PARAMETERS)
     print("uncertain parameters", uncertain_params)
+    return uncertain_params
+
+def set_uncertain_parameters(energy_items, input_data):
+    for e in energy_items:
+        for key, param in e.component.UNCERTAIN_PARAMETERS.items():
+            param.value = input_data[key]
+        for key, param in e.energy_cost.UNCERTAIN_PARAMETERS.items():
+            param.value = input_data[key]
