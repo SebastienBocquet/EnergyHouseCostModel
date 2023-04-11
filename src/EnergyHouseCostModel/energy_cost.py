@@ -132,8 +132,8 @@ def component_integrated_cost(energy_item, duration_years):
 
     for year in range(0, duration_years):
         cost_evolution[year] = energy_item.energy_cost.cost.compute(year, energy_kwh)
-        if energy_item.energy_cost.energy_name == "electricity":
-            cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
+        if energy_item.energy_cost.cost.energy_name == "electricity":
+            cost_evolution[year] -= energy_item.energy_cost.cost.compute_injected(year, energy_kwh_injected)
         if year > 0:
             cost_evolution[year] += energy_item.component.maintenance_cost_per_year
     cost_evolution[0] += energy_item.component.initial_install_cost

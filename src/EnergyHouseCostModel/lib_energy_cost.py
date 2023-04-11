@@ -42,6 +42,7 @@ class GasCost(EnergyCost):
         self.update()
         self.cost.plot(duration_years, show=False)
 
+    # TODO cost could be a property, which calls update()
     def update(self):
         self.cost = EnergyCostProjection("gas", self.CURRENT_GAS_COST_ONE_KWH, "power",
             percentage_of_increase_per_year=self.UNCERTAIN_PARAMETERS["percentage_increase"].value)

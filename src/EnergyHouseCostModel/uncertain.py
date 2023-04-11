@@ -25,3 +25,4 @@ def set_uncertain_parameters(energy_items, input_data):
             param.value = input_data[key]
         for key, param in e.energy_cost.UNCERTAIN_PARAMETERS.items():
             param.value = input_data[key]
+            e.energy_cost.update()

@@ -1,5 +1,6 @@
 from EnergyHouseCostModel.energetic_components import Component, EnergyItem
 from EnergyHouseCostModel.energetic_components import PV
+from EnergyHouseCostModel.energy_cost import compute_cost
 from EnergyHouseCostModel.lib_energy_cost import ElectricityCost
 from EnergyHouseCostModel.lib_energy_cost import GasCost
 from EnergyHouseCostModel.uncertain import get_uncertain_parameters
@@ -11,7 +12,7 @@ if __name__ == "__main__":
     BOILER_EFFICIENCY = 0.6
     HEAT_PUMP_COP = 2.
     CONSUMED_KWH_PER_YEAR_HEATING = 3400.
-    PRODUCED_KWH_PER_YEAR_HEATING = 3400. * BOILER_EFFICIENCY
+    PRODUCED_KWH_PER_YEAR_HEATING = CONSUMED_KWH_PER_YEAR_HEATING * BOILER_EFFICIENCY
     CONSUMED_KWH_PER_YEAR_HOT_WATER = 3 * 800.
     CURRENT_GAS_COST_ONE_KWH = 0.1043
 
