@@ -1,3 +1,6 @@
+from gemseo.core.discipline import MDODiscipline
+from numpy import array
+
 from EnergyHouseCostModel.energetic_components import Component, EnergyItem
 from EnergyHouseCostModel.energetic_components import PV
 from EnergyHouseCostModel.energy_cost import compute_cost
@@ -5,6 +8,17 @@ from EnergyHouseCostModel.lib_energy_cost import ElectricityCost
 from EnergyHouseCostModel.lib_energy_cost import GasCost
 from EnergyHouseCostModel.uncertain import get_uncertain_parameters
 from EnergyHouseCostModel.uncertain import set_uncertain_parameters
+
+class EnergyScenario(MDODiscipline):
+
+    def __init__(self, duration_years):
+        super().__init__("energy_scenario", grammar_type="SimpleGrammar")
+        self.duration_years = duration_years
+
+    def _run(self):
+        set_uncertain_parameters(energy_items_1, input_data)
+        total_cost, _ = compute_cost(energy_items_1, DURATION_YEARS, show=False)
+        self.store_local_data(**{"total_cost": total_cost})
 
 if __name__ == "__main__":
 
@@ -28,21 +42,16 @@ if __name__ == "__main__":
         EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost),
         EnergyItem(0., pv, electricity_cost, is_produced=True)]
 
-    # total_cost_1 = compute_cost(energy_items_1, DURATION_YEARS, show=True)
-
     input_data = {}
     for name, param in get_uncertain_parameters(energy_items_1).items():
         input_data.update({name: param.value})
-    print(input_data)
+
+    scenario = EnergyScenario(DURATION_YEARS)
+    # TODO set grammars in constructor. PAss energy_items to constructor and set as attribute.
+    scenario.input_grammar.update_from_data(input_data)
+    scenario.output_grammar.update({"total_cost": float})
+    scenario.execute(input_data)
+    print(scenario.get_output_data()["total_cost"])
     input_data["percentage_increase"] = 15.
-    set_uncertain_parameters(energy_items_1, input_data)
-    print(input_data)
-
-
-    # energy_items_2 = [EnergyItem(PRODUCED_KWH_PER_YEAR_HEATING, heat_pump, electricity_cost, is_produced=True),
-    #                    EnergyItem(CONSUMED_KWH_PER_YEAR_HOT_WATER, hot_water_tank, electricity_cost)]
-    #
-    # compute_cost(energy_items_2, DURATION_YEARS, show=False)
-    #
-    # # Compare scenarios
-    # compute_cost(energy_items_1 + energy_items_2, DURATION_YEARS)
+    scenario.execute(input_data)
+    print(scenario.get_output_data()["total_cost"])
