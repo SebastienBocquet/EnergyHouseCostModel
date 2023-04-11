@@ -46,13 +46,14 @@ class EnergyItem:
     component: Component
     energy_cost: EnergyCost
     is_produced: bool = False
+    integrated_cost: float = 0.
 
     def __repr__(self):
         energy_consumed = self.component.energy_consumption(self.energy_value, self.is_produced)
         energy_produced_or_consumed = "Consumed"
         if self.is_produced:
             energy_produced_or_consumed = "Produced"
-        return f"{energy_produced_or_consumed} {energy_consumed} kWh of {self.energy_cost.cost} by a {self.component}"
+        return f"{energy_produced_or_consumed} {energy_consumed} kWh = {(self.integrated_cost / self.energy_cost.duration_years):.0f} euros of {self.energy_cost.cost} by a {self.component}"
 
 
 

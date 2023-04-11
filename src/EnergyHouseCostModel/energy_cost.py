@@ -139,6 +139,7 @@ def component_integrated_cost(energy_item, duration_years):
     cost_evolution[0] += energy_item.component.initial_install_cost
 
     total_cost = np.sum(cost_evolution)
+    energy_item.integrated_cost = total_cost
 
     return total_cost, cost_evolution
 
