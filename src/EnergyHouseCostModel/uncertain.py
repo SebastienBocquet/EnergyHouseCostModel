@@ -19,6 +19,7 @@ def get_uncertain_parameters(energy_items): # List[EnergyItem]):
     print("uncertain parameters", uncertain_params)
     return uncertain_params
 
+#TODO prefix uncertain param name to make sure they are unique.
 def set_uncertain_parameters(energy_items, input_data):
     for e in energy_items:
         for key, param in e.component.UNCERTAIN_PARAMETERS.items():

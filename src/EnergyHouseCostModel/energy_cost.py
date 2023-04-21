@@ -3,9 +3,20 @@ from matplotlib import pyplot as plt
 from numpy import array, interp, allclose, insert
 from numpy.typing import NDArray
 
+from EnergyHouseCostModel.uncertain import UncertainParameter
+
 
 class EnergyCostProjection():
     """Estimates the cost of energy in the future."""
+
+    UNCERTAIN_PARAMETERS = {
+        "initial_cost_one_kwh": UncertainParameter(0., 0., 0.),
+        "slope": UncertainParameter(0., 0., 0.),
+        "percentage_of_increase_per_year": UncertainParameter(0., 0., 0.),
+        "curve_1": UncertainParameter(0.22, 0.18, 0.25),
+        "curve_2": UncertainParameter(0.25, 0.18, 0.25),
+        "curve_3": UncertainParameter(0.28, 0.18, 0.29)
+    }
 
     def __init__(
             self,
@@ -15,7 +26,8 @@ class EnergyCostProjection():
             slope: float = 0.,
             percentage_of_increase_per_year: float = 0.,
             curve: tuple[NDArray, NDArray] | None = None,
-            injected_price_per_kwh = 0.):
+            injected_price_per_kwh = 0.,
+            duration_years = 15.):
         """
         Args:
             initial_cost_one_kwh: current cost of one kWh of energy.
@@ -27,13 +39,37 @@ class EnergyCostProjection():
             and the second array defines the cost in euros of one kWh.
 
         """
+        self.set_uncertain_params(initial_cost_one_kwh, slope, percentage_of_increase_per_year, curve)
         self.energy_name = energy_name
-        self.initial_cost_one_kwh = initial_cost_one_kwh
+        self.duration_years = duration_years
+        self.initial_cost_one_kwh = self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value
         self.profile_type = profile_type
-        self.slope = slope
-        self.percentage_of_increase_per_year = percentage_of_increase_per_year
-        self.curve = curve
+        self.slope = self.UNCERTAIN_PARAMETERS["slope"].value
+        self.percentage_of_increase_per_year = self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value
+        self.curve = (np.linspace(0., self.duration_years, 3), np.array([
+            self.UNCERTAIN_PARAMETERS["curve_1"].value,
+            self.UNCERTAIN_PARAMETERS["curve_2"].value,
+            self.UNCERTAIN_PARAMETERS["curve_3"].value
+        ]))
         self.injected_price_per_kwh = injected_price_per_kwh
+
+    def set_uncertain_params(self, initial_cost_one_kwh, slope, percentage_of_increase_per_year, curve):
+        self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value = initial_cost_one_kwh
+        self.UNCERTAIN_PARAMETERS["slope"].value = slope
+        self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value = percentage_of_increase_per_year
+        # self.UNCERTAIN_PARAMETERS["curve_1"].value = curve[1][0]
+        # self.UNCERTAIN_PARAMETERS["curve_2"].value = curve[1][1]
+        # self.UNCERTAIN_PARAMETERS["curve_3"].value = curve[1][2]
+
+
+    def update(self):
+        self.slope = self.UNCERTAIN_PARAMETERS["slope"].value
+        self.percentage_of_increase_per_year = self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value
+        self.curve = (np.linspace(0., self.duration_years, 3), np.array([
+            self.UNCERTAIN_PARAMETERS["curve_1"].value,
+            self.UNCERTAIN_PARAMETERS["curve_2"].value,
+            self.UNCERTAIN_PARAMETERS["curve_3"].value
+        ]))
 
     def compute_linear_profile_value(self, year):
         return self.initial_cost_one_kwh + self.slope * year
@@ -41,10 +77,13 @@ class EnergyCostProjection():
     def compute_power_profile_value(self, year):
         return self.initial_cost_one_kwh * (1 + 0.01 * self.percentage_of_increase_per_year)**year
 
+    def __compute_band_value(self, value_start, value_end):
+        return 0.5 * (value_start + value_end)
+
     def compute(
-            self,
-            year_n: int,
-            energy_kwh: float
+        self,
+        year_n: int,
+        energy_kwh: float
     ):
         """Computes price in euros during ``year_n`` of a given number of kWh of energy.
 
@@ -58,11 +97,11 @@ class EnergyCostProjection():
         if self.profile_type == "linear":
             price_one_kwh_january = self.compute_linear_profile_value(year_n)
             price_one_kwh_december = self.compute_linear_profile_value(year_n + 1)
-            price_one_kwh_at_year_n = 0.5 * (price_one_kwh_january + price_one_kwh_december)
+            price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         elif self.profile_type == "power":
             price_one_kwh_january = self.compute_power_profile_value(year_n)
             price_one_kwh_december = self.compute_power_profile_value(year_n + 1)
-            price_one_kwh_at_year_n = 0.5 * (price_one_kwh_january + price_one_kwh_december)
+            price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         elif self.profile_type == "curve":
             if self.curve[0][-1] < year_n:
                 raise ValueError(f"Last value of year axis of curve must be greater than arg year_n + 1 which is {year_n}.")
@@ -71,7 +110,7 @@ class EnergyCostProjection():
             # Compute price as the half sum of the price at beginning of the year and price at the end of the year.
             price_one_kwh_january = interp(array([year_n]), self.curve[0], self.curve[1])[0]
             price_one_kwh_december = interp(array([year_n + 1]), self.curve[0], self.curve[1])[0]
-            price_one_kwh_at_year_n = 0.5 * (price_one_kwh_january + price_one_kwh_december)
+            price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         else:
             raise ValueError("The profile type should be 'linear', 'power' or 'curve'.")
         return energy_kwh * price_one_kwh_at_year_n
@@ -106,12 +145,12 @@ class EnergyCost:
 
     UNCERTAIN_PARAMETERS = {}
 
-    def __init__(self, duration_years: int):
+    def __init__(self, cost: EnergyCostProjection, duration_years: int = 0):
         self.duration_years = duration_years
-        self.cost = None
+        self.cost = cost
 
     def update(self):
-        """"""
+        """Reconstructs the cost to be up-to-date with new values of ``UNCERTAIN_PARAMETERS``."""
 
 
 def component_integrated_cost(energy_item, duration_years):

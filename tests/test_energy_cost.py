@@ -1,14 +1,16 @@
 from numpy import allclose, array
 from pytest import approx
 
-from EnergyHouseCostModel.energy_cost import EnergyCostProjection, component_integrated_cost
+from EnergyHouseCostModel.energy_cost import EnergyCostProjection, component_integrated_cost, EnergyCost
 from EnergyHouseCostModel.energetic_components import Component, EnergyItem
 
 component = Component('component', 0., 0., production_over_consumption_ratio=None)
-
+DURATION_YEARS = 0
 
 def test_integrated_linear_slope_0_cost_one_component():
-    energy_cost = EnergyCostProjection('an energy', 0.1, 'linear', slope=0.)
+    energy_cost_projection = EnergyCostProjection('an energy', 0.1, 'linear', slope=0.)
+    energy_cost = EnergyCost(DURATION_YEARS)
+    energy_cost.cost = energy_cost_projection
     item = EnergyItem(1., component, energy_cost, is_produced=False)
 
     total_cost, cost_evolution = component_integrated_cost(item, 1)
