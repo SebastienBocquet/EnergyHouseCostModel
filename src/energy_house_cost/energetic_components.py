@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from abc import ABC
 
-from EnergyHouseCostModel.lib_energy_cost import EnergyCost
+from energy_house_cost.energy_cost import EnergyCostProjection
 
 
 class Component(ABC):
@@ -44,7 +44,7 @@ class EnergyItem:
     """An energy item. The energetic profile is defined as a list of energy items."""
     energy_value: float
     component: Component
-    energy_cost: EnergyCost
+    energy_cost: EnergyCostProjection
     is_produced: bool = False
     integrated_cost: float = 0.
 
@@ -53,15 +53,12 @@ class EnergyItem:
         energy_produced_or_consumed = "Consumed"
         if self.is_produced:
             energy_produced_or_consumed = "Produced"
-        return f"{energy_produced_or_consumed} {energy_consumed} kWh = {(self.integrated_cost / self.energy_cost.duration_years):.0f} euros of {self.energy_cost.cost} by a {self.component}"
-
-
-
+        return f"{energy_produced_or_consumed} {energy_consumed} kWh = {(self.integrated_cost / self.energy_cost.duration_years):.0f} euros of {self.energy_cost} by a {self.component}"
 
 
 class PV(Component):
 
-    from EnergyHouseCostModel.uncertain import UncertainParameter
+    from energy_house_cost.uncertain import UncertainParameter
     UNCERTAIN_PARAMETERS = {"auto_consumption_ratio": UncertainParameter(
         default_value=0.4,
         min_value=0.3,

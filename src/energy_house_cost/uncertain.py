@@ -1,7 +1,6 @@
 from typing import List
 
 
-
 class UncertainParameter():
 
     def __init__(self, default_value, min_value, max_value):

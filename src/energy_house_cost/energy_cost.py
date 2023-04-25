@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy import array, interp, allclose, insert
 from numpy.typing import NDArray
 
-from EnergyHouseCostModel.uncertain import UncertainParameter
+from energy_house_cost.uncertain import UncertainParameter
 
 
 class EnergyCostProjection():
@@ -141,18 +143,6 @@ class EnergyCostProjection():
             plt.close()
 
 
-class EnergyCost:
-
-    UNCERTAIN_PARAMETERS = {}
-
-    def __init__(self, cost: EnergyCostProjection, duration_years: int = 0):
-        self.duration_years = duration_years
-        self.cost = cost
-
-    def update(self):
-        """Reconstructs the cost to be up-to-date with new values of ``UNCERTAIN_PARAMETERS``."""
-
-
 def component_integrated_cost(energy_item, duration_years):
     """Computes the integrated cost in euros over ``duration_years`` of an energy item.
 
@@ -170,9 +160,9 @@ def component_integrated_cost(energy_item, duration_years):
     cost_evolution = np.zeros((duration_years))
 
     for year in range(0, duration_years):
-        cost_evolution[year] = energy_item.energy_cost.cost.compute(year, energy_kwh)
-        if energy_item.energy_cost.cost.energy_name == "electricity":
-            cost_evolution[year] -= energy_item.energy_cost.cost.compute_injected(year, energy_kwh_injected)
+        cost_evolution[year] = energy_item.energy_cost.compute(year, energy_kwh)
+        if energy_item.energy_cost.energy_name == "electricity":
+            cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
         if year > 0:
             cost_evolution[year] += energy_item.component.maintenance_cost_per_year
     cost_evolution[0] += energy_item.component.initial_install_cost
