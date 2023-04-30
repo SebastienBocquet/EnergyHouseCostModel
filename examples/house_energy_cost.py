@@ -1,12 +1,15 @@
 from gemseo.core.discipline import MDODiscipline
 from numpy import array
 
-from energy_house_cost.energetic_components import Component, EnergyItem
+from energy_house_cost.energetic_components import EnergeticComponent, EnergyItem
 from energy_house_cost.energetic_components import PV
 from energy_house_cost.energy_cost import EnergyCostProjection
 from energy_house_cost.energy_cost import compute_cost
+from energy_house_cost.lib_energy_cost import ElectricityCostProjection
+from energy_house_cost.lib_energy_cost import GasCostProjection
 from energy_house_cost.uncertain import get_uncertain_parameters
 from energy_house_cost.uncertain import set_uncertain_parameters
+
 
 class EnergyScenario(MDODiscipline):
 
@@ -24,6 +27,7 @@ class EnergyScenario(MDODiscipline):
         total_cost, _ = compute_cost(energy_items_1, DURATION_YEARS, show=False)
         self.store_local_data(**{"total_cost": total_cost})
 
+
 if __name__ == "__main__":
 
     DURATION_YEARS = 15
@@ -32,20 +36,16 @@ if __name__ == "__main__":
     CONSUMED_KWH_PER_YEAR_HEATING = 3400.
     PRODUCED_KWH_PER_YEAR_HEATING = CONSUMED_KWH_PER_YEAR_HEATING * BOILER_EFFICIENCY
     CONSUMED_KWH_PER_YEAR_HOT_WATER = 3 * 800.
-    CURRENT_ELECTRICITY_COST_ONE_KWH = 0.2062
-    CURRENT_GAS_COST_ONE_KWH = 0.1043
 
-    electricity_cost_axis = array([0.22, 0.25, 0.28])
-    year_axis = array([1., 5., DURATION_YEARS])
-    electricity_cost = EnergyCostProjection("electricity", CURRENT_ELECTRICITY_COST_ONE_KWH, "curve", curve=(year_axis, electricity_cost_axis))
+    electricity_cost = ElectricityCostProjection(DURATION_YEARS)
     electricity_cost.plot(DURATION_YEARS, show=False)
 
-    gas_cost = EnergyCostProjection("gas", CURRENT_GAS_COST_ONE_KWH, "power", percentage_of_increase_per_year=10.)
+    gas_cost = GasCostProjection(DURATION_YEARS)
     gas_cost.plot(DURATION_YEARS, show=False)
 
-    heat_pump = Component("heat pump", 15000., 200., HEAT_PUMP_COP)
-    hot_water_tank = Component("hot water tank", 1000., 0.)
-    boiler = Component("boiler", 7000., 100., BOILER_EFFICIENCY)
+    heat_pump = EnergeticComponent("heat pump", 15000., 200., HEAT_PUMP_COP)
+    hot_water_tank = EnergeticComponent("hot water tank", 1000., 0.)
+    boiler = EnergeticComponent("boiler", 7000., 100., BOILER_EFFICIENCY)
     pv = PV("pv", 5000., 0.)
 
     energy_items_1 = [EnergyItem(CONSUMED_KWH_PER_YEAR_HEATING, boiler, gas_cost),
@@ -59,6 +59,9 @@ if __name__ == "__main__":
     scenario = EnergyScenario(energy_items_1, DURATION_YEARS)
     scenario.execute(input_data)
     print(scenario.get_output_data()["total_cost"])
-    input_data["curve_1"] = 0.25
+    input_data["ElectricityCostProjection.curve_1"] = 0.25
+    scenario.execute(input_data)
+    print(scenario.get_output_data()["total_cost"])
+    input_data["GasCostProjection.percentage_of_increase_per_year"] = 12.
     scenario.execute(input_data)
     print(scenario.get_output_data()["total_cost"])

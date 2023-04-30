@@ -8,76 +8,75 @@ from numpy.typing import NDArray
 from energy_house_cost.uncertain import UncertainParameter
 
 
-class EnergyCostProjection():
+class Component():
+
+    NAME = None
+
+    UNCERTAIN_PARAMETERS = {}
+
+    def __init__(self):
+        self._uncertain_parameters = {}
+        for k, v in self.UNCERTAIN_PARAMETERS.items():
+            #TODO replace class name by class attr NAME
+            self._uncertain_parameters[f"{self.__class__.__name__}.{k}"] = v
+
+
+class EnergyCostProjection(Component):
     """Estimates the cost of energy in the future."""
 
+    # initial_cost_one_kwh
+    # """current cost of one kWh of energy."""
+    #
+    # profile_type
+    # """type of profile for the cost of energy in the future.
+    # Should be 'linear', 'power' or 'curve'."""
+    #
+    # slope
+    # """slope in euros per year for a linear profile."""
+    #
+    # percentage_of_increase_per_year
+    # """percentage of increase each year for the power profile."""
+    #
+    # curve
+    # """a tuple of two Numpy arrays. The first array defines the x-axis in year,
+    # and the second array defines the cost in euros of one kWh."""
+
+    ENERGY_NAME = None
+
+    PROFILE_TYPE = None
+
     UNCERTAIN_PARAMETERS = {
-        "initial_cost_one_kwh": UncertainParameter(0., 0., 0.),
-        "slope": UncertainParameter(0., 0., 0.),
-        "percentage_of_increase_per_year": UncertainParameter(0., 0., 0.),
-        "curve_1": UncertainParameter(0.22, 0.18, 0.25),
-        "curve_2": UncertainParameter(0.25, 0.18, 0.25),
-        "curve_3": UncertainParameter(0.28, 0.18, 0.29)
+        "initial_cost_one_kwh": UncertainParameter(),
+        "slope": UncertainParameter(),
+        "percentage_of_increase_per_year": UncertainParameter(),
+        "curve_1": UncertainParameter(),
+        "curve_2": UncertainParameter(),
+        "curve_3": UncertainParameter(),
+        "injected_price_per_kwh": UncertainParameter()
     }
 
+    __NB_POINTS_CURVE = 4
+
     def __init__(
-            self,
-            energy_name: str,
-            initial_cost_one_kwh: float,
-            profile_type: str,
-            slope: float = 0.,
-            percentage_of_increase_per_year: float = 0.,
-            curve: tuple[NDArray, NDArray] | None = None,
-            injected_price_per_kwh = 0.,
-            duration_years = 15.):
+            self, duration_years):
         """
         Args:
-            initial_cost_one_kwh: current cost of one kWh of energy.
-            profile_type: type of profile for the cost of energy in the future.
-            Should be 'linear', 'power' or 'curve'.
-            slope: slope in euros per year for a linear profile.
-            percentage_of_increase_per_year: percentage of increase each year for the power profile.
-            curve: a tuple of two Numpy arrays. The first array defines the x-axis in year,
-            and the second array defines the cost in euros of one kWh.
+            duration_years: The number of years over which the cost projection is computed.
 
         """
-        self.set_uncertain_params(initial_cost_one_kwh, slope, percentage_of_increase_per_year, curve)
-        self.energy_name = energy_name
+        super().__init__()
+        self.energy_name = self.ENERGY_NAME
         self.duration_years = duration_years
-        self.initial_cost_one_kwh = self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value
-        self.profile_type = profile_type
-        self.slope = self.UNCERTAIN_PARAMETERS["slope"].value
-        self.percentage_of_increase_per_year = self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value
-        self.curve = (np.linspace(0., self.duration_years, 3), np.array([
-            self.UNCERTAIN_PARAMETERS["curve_1"].value,
-            self.UNCERTAIN_PARAMETERS["curve_2"].value,
-            self.UNCERTAIN_PARAMETERS["curve_3"].value
-        ]))
-        self.injected_price_per_kwh = injected_price_per_kwh
-
-    def set_uncertain_params(self, initial_cost_one_kwh, slope, percentage_of_increase_per_year, curve):
-        self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value = initial_cost_one_kwh
-        self.UNCERTAIN_PARAMETERS["slope"].value = slope
-        self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value = percentage_of_increase_per_year
-        # self.UNCERTAIN_PARAMETERS["curve_1"].value = curve[1][0]
-        # self.UNCERTAIN_PARAMETERS["curve_2"].value = curve[1][1]
-        # self.UNCERTAIN_PARAMETERS["curve_3"].value = curve[1][2]
-
-
-    def update(self):
-        self.slope = self.UNCERTAIN_PARAMETERS["slope"].value
-        self.percentage_of_increase_per_year = self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value
-        self.curve = (np.linspace(0., self.duration_years, 3), np.array([
-            self.UNCERTAIN_PARAMETERS["curve_1"].value,
-            self.UNCERTAIN_PARAMETERS["curve_2"].value,
-            self.UNCERTAIN_PARAMETERS["curve_3"].value
-        ]))
+        self.profile_type = self.PROFILE_TYPE
+        self.curve_axis = np.linspace(0., self.duration_years, self.__NB_POINTS_CURVE)
 
     def compute_linear_profile_value(self, year):
-        return self.initial_cost_one_kwh + self.slope * year
+        return self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value + \
+            self.UNCERTAIN_PARAMETERS["slope"].value * year
 
     def compute_power_profile_value(self, year):
-        return self.initial_cost_one_kwh * (1 + 0.01 * self.percentage_of_increase_per_year)**year
+        return self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value *\
+            (1 + 0.01 * self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value)**year
 
     def __compute_band_value(self, value_start, value_end):
         return 0.5 * (value_start + value_end)
@@ -105,16 +104,22 @@ class EnergyCostProjection():
             price_one_kwh_december = self.compute_power_profile_value(year_n + 1)
             price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         elif self.profile_type == "curve":
-            if self.curve[0][-1] < year_n:
+            curve = (self.curve_axis,
+            (
+                self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value,
+                self.UNCERTAIN_PARAMETERS["curve_1"].value,
+                self.UNCERTAIN_PARAMETERS["curve_2"].value,
+                self.UNCERTAIN_PARAMETERS["curve_3"].value)
+            )
+            if curve[0][-1] < year_n:
                 raise ValueError(f"Last value of year axis of curve must be greater than arg year_n + 1 which is {year_n}.")
-            insert(self.curve[0], 0, 0)
-            insert(self.curve[1], 0, self.initial_cost_one_kwh)
             # Compute price as the half sum of the price at beginning of the year and price at the end of the year.
-            price_one_kwh_january = interp(array([year_n]), self.curve[0], self.curve[1])[0]
-            price_one_kwh_december = interp(array([year_n + 1]), self.curve[0], self.curve[1])[0]
+            price_one_kwh_january = interp(array([year_n]), curve[0], curve[1])[0]
+            price_one_kwh_december = interp(array([year_n + 1]), curve[0], curve[1])[0]
             price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         else:
             raise ValueError("The profile type should be 'linear', 'power' or 'curve'.")
+
         return energy_kwh * price_one_kwh_at_year_n
 
     def compute_injected(
@@ -122,7 +127,7 @@ class EnergyCostProjection():
             year_n: int,
             energy_kwh: float
     ):
-        return self.injected_price_per_kwh * energy_kwh
+        return self.UNCERTAIN_PARAMETERS["injected_price_per_kwh"].value * energy_kwh
 
     def __repr__(self):
         return f"{self.energy_name}"
@@ -233,4 +238,5 @@ def compute_cost(energy_items, duration_years, show=True, save=False):
         plot_integrated_cost_per_component(component_names, cost_per_year_per_component, duration_years)
 
     return total_cost, cost_per_year_per_component
+
 

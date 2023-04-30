@@ -1,14 +1,15 @@
 from dataclasses import dataclass
 from abc import ABC
 
+from energy_house_cost.energy_cost import Component
 from energy_house_cost.energy_cost import EnergyCostProjection
 
 
-class Component(ABC):
+class EnergeticComponent(Component):
 
-    UNCERTAIN_PARAMETERS = {}
-
+    #TODO add init args as uncertain parameters
     def __init__(self, name: str, initial_install_cost: float = 0., maintenance_cost: float = 0., production_over_consumption_ratio: float | None = None):
+        super().__init__()
         self.name = name
         self.initial_install_cost = initial_install_cost
         self.maintenance_cost_per_year = maintenance_cost
@@ -43,7 +44,7 @@ class Component(ABC):
 class EnergyItem:
     """An energy item. The energetic profile is defined as a list of energy items."""
     energy_value: float
-    component: Component
+    component: EnergeticComponent
     energy_cost: EnergyCostProjection
     is_produced: bool = False
     integrated_cost: float = 0.
@@ -56,7 +57,7 @@ class EnergyItem:
         return f"{energy_produced_or_consumed} {energy_consumed} kWh = {(self.integrated_cost / self.energy_cost.duration_years):.0f} euros of {self.energy_cost} by a {self.component}"
 
 
-class PV(Component):
+class PV(EnergeticComponent):
 
     from energy_house_cost.uncertain import UncertainParameter
     UNCERTAIN_PARAMETERS = {"auto_consumption_ratio": UncertainParameter(
@@ -71,11 +72,10 @@ class PV(Component):
         sunny_hours = 7.
         max_power_kw = 3.
         self.produced_energy_kwh = sunny_hours * max_power_kw * 365
-        self.auto_consumption_ratio = self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value
 
     def energy_consumption(self, energy_value: float, is_produced: bool):
         # TODO take into account variation of power per season
-        return -self.auto_consumption_ratio * self.produced_energy_kwh
+        return -self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value * self.produced_energy_kwh
 
     def injected_energy(self):
-        return (1 - self.auto_consumption_ratio) * self.produced_energy_kwh
+        return (1 - self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value) * self.produced_energy_kwh
