@@ -52,23 +52,6 @@ class Component():
 class EnergyCostProjection(Component):
     """Estimates the cost of energy in the future."""
 
-    # initial_cost_one_kwh
-    # """current cost of one kWh of energy."""
-    #
-    # profile_type
-    # """type of profile for the cost of energy in the future.
-    # Should be 'linear', 'power' or 'curve'."""
-    #
-    # slope
-    # """slope in euros per year for a linear profile."""
-    #
-    # percentage_of_increase_per_year
-    # """percentage of increase each year for the power profile."""
-    #
-    # curve
-    # """a tuple of two Numpy arrays. The first array defines the x-axis in year,
-    # and the second array defines the cost in euros of one kWh."""
-
     _RESERVED_KEYS = ["name", "energy_name", "profile_type", "points"]
 
     def __init__(
