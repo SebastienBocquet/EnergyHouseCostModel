@@ -1,0 +1,7 @@
+{
+  "name": "mock_power",
+  "energy_name": "electricity",
+  "profile_type": "linear",
+  "initial_cost_one_kwh": {"value": 0.2, "min": 0.0, "max": 1.0},
+  "percentage_of_increase_per_year": {"value": 5.0, "min": 0.0, "max": 10.0}
+}

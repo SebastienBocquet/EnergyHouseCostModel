@@ -1,24 +1,52 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 from matplotlib import pyplot as plt
-from numpy import array, interp, allclose, insert
-from numpy.typing import NDArray
+from numpy import array, interp
 
 from energy_house_cost.uncertain import UncertainParameter
 
 
 class Component():
 
-    NAME = None
+    _uncertain_parameters = None
 
-    UNCERTAIN_PARAMETERS = {}
+    _RESERVED_KEYS = ["name"]
 
-    def __init__(self):
+    def __init__(self, data_file_path: Path | None = None):
+        data = json.load(open(data_file_path)) if data_file_path is not None else {}
+        self._data = data
         self._uncertain_parameters = {}
-        for k, v in self.UNCERTAIN_PARAMETERS.items():
-            #TODO replace class name by class attr NAME
-            self._uncertain_parameters[f"{self.__class__.__name__}.{k}"] = v
+        if "name" in data.keys():
+            self._name = data["name"]
+        else:
+            self._name = self.__class__.__name__
+
+        for k, v in data.items():
+            if k not in self._RESERVED_KEYS:
+                param_name = f"{self._name}.{k}"
+                param = self._parse_single_key(param_name, v)
+                self._uncertain_parameters[param_name] = param
+
+    def _parse_single_key(self, name, v):
+        min_value = None
+        max_value = None
+        if isinstance(v, dict):
+            value = v["value"]
+            if "min" in v.keys():
+                min_value = v["min"]
+            if "max" in v.keys():
+                max_value = v["max"]
+        else:
+            value = v
+        return UncertainParameter(name, value, min_value, max_value)
+
+    @property
+    def parameters(self):
+        return self._uncertain_parameters
 
 
 class EnergyCostProjection(Component):
@@ -41,42 +69,32 @@ class EnergyCostProjection(Component):
     # """a tuple of two Numpy arrays. The first array defines the x-axis in year,
     # and the second array defines the cost in euros of one kWh."""
 
-    ENERGY_NAME = None
-
-    PROFILE_TYPE = None
-
-    UNCERTAIN_PARAMETERS = {
-        "initial_cost_one_kwh": UncertainParameter(),
-        "slope": UncertainParameter(),
-        "percentage_of_increase_per_year": UncertainParameter(),
-        "curve_1": UncertainParameter(),
-        "curve_2": UncertainParameter(),
-        "curve_3": UncertainParameter(),
-        "injected_price_per_kwh": UncertainParameter()
-    }
-
-    __NB_POINTS_CURVE = 4
+    _RESERVED_KEYS = ["name", "energy_name", "profile_type", "points"]
 
     def __init__(
-            self, duration_years):
+            self, data_file_path: Path, duration_years):
         """
         Args:
             duration_years: The number of years over which the cost projection is computed.
 
         """
-        super().__init__()
-        self.energy_name = self.ENERGY_NAME
+        super().__init__(data_file_path)
+        self.energy_name = self._data["energy_name"]
         self.duration_years = duration_years
-        self.profile_type = self.PROFILE_TYPE
-        self.curve_axis = np.linspace(0., self.duration_years, self.__NB_POINTS_CURVE)
+        self.profile_type = self._data["profile_type"]
+        if self.profile_type == "user_points":
+            for i, p in enumerate(self._data["points"]):
+                param_name = f"{self._name}.point{i}"
+                param = self._parse_single_key(param_name, p)
+                self._uncertain_parameters[param_name] = param
 
     def compute_linear_profile_value(self, year):
-        return self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value + \
-            self.UNCERTAIN_PARAMETERS["slope"].value * year
+        return self._uncertain_parameters[f"{self._name}.initial_cost_one_kwh"].value + \
+            self._uncertain_parameters[f"{self._name}.slope"].value * year
 
     def compute_power_profile_value(self, year):
-        return self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value *\
-            (1 + 0.01 * self.UNCERTAIN_PARAMETERS["percentage_of_increase_per_year"].value)**year
+        return self._uncertain_parameters[f"{self._name}.initial_cost_one_kwh"].value *\
+            (1 + 0.01 * self._uncertain_parameters[f"{self._name}.percentage_of_increase_per_year"].value)**year
 
     def __compute_band_value(self, value_start, value_end):
         return 0.5 * (value_start + value_end)
@@ -103,22 +121,27 @@ class EnergyCostProjection(Component):
             price_one_kwh_january = self.compute_power_profile_value(year_n)
             price_one_kwh_december = self.compute_power_profile_value(year_n + 1)
             price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
-        elif self.profile_type == "curve":
-            curve = (self.curve_axis,
-            (
-                self.UNCERTAIN_PARAMETERS["initial_cost_one_kwh"].value,
-                self.UNCERTAIN_PARAMETERS["curve_1"].value,
-                self.UNCERTAIN_PARAMETERS["curve_2"].value,
-                self.UNCERTAIN_PARAMETERS["curve_3"].value)
+        elif self.profile_type == "user_points":
+            profile = []
+            profile.append(
+                (0., self._uncertain_parameters[
+                    f"{self._name}.initial_cost_one_kwh"])
             )
-            if curve[0][-1] < year_n:
+            for i,p in enumerate(self._data["points"]):
+                value = self._uncertain_parameters[f"{self._name}.point{i}"]
+                profile.append(
+                    (p["year"], value)
+                )
+            profile_y_values = [v[1].value for v in profile]
+            year_axis = [v[0] for v in profile]
+            if year_axis[-1] < year_n:
                 raise ValueError(f"Last value of year axis of curve must be greater than arg year_n + 1 which is {year_n}.")
             # Compute price as the half sum of the price at beginning of the year and price at the end of the year.
-            price_one_kwh_january = interp(array([year_n]), curve[0], curve[1])[0]
-            price_one_kwh_december = interp(array([year_n + 1]), curve[0], curve[1])[0]
+            price_one_kwh_january = interp(array([year_n]), year_axis, profile_y_values)[0]
+            price_one_kwh_december = interp(array([year_n + 1]), year_axis, profile_y_values)[0]
             price_one_kwh_at_year_n = self.__compute_band_value(price_one_kwh_january, price_one_kwh_december)
         else:
-            raise ValueError("The profile type should be 'linear', 'power' or 'curve'.")
+            raise ValueError("The profile type should be 'linear', 'power' or 'user_points'.")
 
         return energy_kwh * price_one_kwh_at_year_n
 
@@ -127,7 +150,7 @@ class EnergyCostProjection(Component):
             year_n: int,
             energy_kwh: float
     ):
-        return self.UNCERTAIN_PARAMETERS["injected_price_per_kwh"].value * energy_kwh
+        return self._uncertain_parameters[f"{self._name}.injected_price_per_kwh"].value * energy_kwh
 
     def __repr__(self):
         return f"{self.energy_name}"
@@ -146,97 +169,5 @@ class EnergyCostProjection(Component):
             if save:
                 plt.savefig(f"{self.energy_name}.png")
             plt.close()
-
-
-def component_integrated_cost(energy_item, duration_years):
-    """Computes the integrated cost in euros over ``duration_years`` of an energy item.
-
-    Args:
-        energy_item: an energy item (hot water, heating, electricity equipments etc...)
-        duration_years: the period in years over which the cost is computed.
-
-    Returns:
-        total_cost: the integrated cost in euros of an energy item over ``duration_years``.
-        cost_evolution: the cost in euros per year of an energy item.
-
-    """
-    energy_kwh = energy_item.component.energy_consumption(energy_item.energy_value, energy_item.is_produced)
-    energy_kwh_injected = energy_item.component.injected_energy()
-    cost_evolution = np.zeros((duration_years))
-
-    for year in range(0, duration_years):
-        cost_evolution[year] = energy_item.energy_cost.compute(year, energy_kwh)
-        if energy_item.energy_cost.energy_name == "electricity":
-            cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
-        if year > 0:
-            cost_evolution[year] += energy_item.component.maintenance_cost_per_year
-    cost_evolution[0] += energy_item.component.initial_install_cost
-
-    total_cost = np.sum(cost_evolution)
-    energy_item.integrated_cost = total_cost
-
-    return total_cost, cost_evolution
-
-def plot_integrated_cost_per_component(component_names, cost_per_year_per_component, duration_years):
-
-    columns = component_names
-    columns = tuple(columns)
-    rows = np.linspace(0, duration_years - 1, duration_years)
-
-    # Get some pastel shades for the colors
-    colors = plt.cm.BuPu(np.linspace(0.1, 0.5, len(rows)))
-    n_rows = len(cost_per_year_per_component)
-
-    index = np.arange(len(columns)) + 0.3
-    bar_width = 0.4
-
-    # Initialize the vertical-offset for the stacked bar chart.
-    y_offset = np.zeros(len(columns))
-
-    # Plot bars and create text labels for the table
-    cell_text = []
-    for row in range(n_rows):
-        plt.bar(index, cost_per_year_per_component[row], bar_width, bottom=y_offset, color=colors[row])
-        y_offset = y_offset + cost_per_year_per_component[row]
-        cell_text.append(['%1.1f' % (x / 1) for x in y_offset])
-    # Reverse colors and text labels to display the last value at the top.
-    colors = colors[::-1]
-    rows = rows[::-1]
-    cell_text.reverse()
-
-    # Add a table at the bottom of the axes
-    the_table = plt.table(cellText=cell_text,
-                          rowLabels=rows,
-                          rowColours=colors,
-                          colLabels=columns,
-                          loc='bottom')
-
-    # Adjust layout to make room for the table:
-    plt.subplots_adjust(left=0.2, bottom=0.5)
-
-    plt.ylabel(f"Cost in euros")
-    # plt.yticks(values * value_increment, ['%d' % val for val in values])
-    plt.xticks([])
-    plt.title('Integrated cost by component')
-
-    plt.show()
-
-def compute_cost(energy_items, duration_years, show=True, save=False):
-    total_cost = 0.
-    cost_per_year_per_component = np.empty((duration_years, len(energy_items)))
-    for i, item in enumerate(energy_items):
-        total_cost_of_component, cost_evolution_of_component = component_integrated_cost(item, duration_years)
-        cost_per_year_per_component[:,i] = cost_evolution_of_component
-        total_cost += total_cost_of_component
-    print(f"Integrated cost is {total_cost} euros over {duration_years} years.")
-    print(f"Detailed cost in kWh per year is \n{[i for i in energy_items]}")
-
-    if show or save:
-        component_names = []
-        for item in energy_items:
-            component_names.append(item.component.name)
-        plot_integrated_cost_per_component(component_names, cost_per_year_per_component, duration_years)
-
-    return total_cost, cost_per_year_per_component
 
 

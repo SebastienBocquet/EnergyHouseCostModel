@@ -1,0 +1,8 @@
+{
+  "name": "electricity_cost",
+  "energy_name": "electricity",
+  "profile_type": "linear",
+  "initial_cost_one_kwh": 0.24,
+  "slope": {"value": 0.1, "min": 0.05, "max": 0.15},
+  "injected_price_per_kwh": 0.0
+}

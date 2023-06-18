@@ -1,0 +1,7 @@
+{
+  "name": "mock_linear",
+  "energy_name": "electricity",
+  "profile_type": "linear",
+  "initial_cost_one_kwh": {"value": 0.2, "min": 0.0, "max": 1.0},
+  "slope": {"value": 2.0, "min": 1.8, "max": 2.2}
+}

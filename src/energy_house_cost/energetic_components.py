@@ -1,8 +1,4 @@
-from dataclasses import dataclass
-from abc import ABC
-
 from energy_house_cost.energy_cost import Component
-from energy_house_cost.energy_cost import EnergyCostProjection
 
 
 class EnergeticComponent(Component):
@@ -21,6 +17,8 @@ class EnergeticComponent(Component):
         Args:
             energy_value: energy produced in kWh per year.
             is_produced: if True the energy is considered produced by the component.
+            It is practical since in general, we know the energy produced and
+            the efficiency (i.e. :attr:`production_over_consumption_ratio`.
             Otherwise it is considered as consumed by the component.
 
         Returns: energy consumed in kWh per year.
@@ -40,34 +38,23 @@ class EnergeticComponent(Component):
         return self.name
 
 
-@dataclass
-class EnergyItem:
-    """An energy item. The energetic profile is defined as a list of energy items."""
-    energy_value: float
-    component: EnergeticComponent
-    energy_cost: EnergyCostProjection
-    is_produced: bool = False
-    integrated_cost: float = 0.
-
-    def __repr__(self):
-        energy_consumed = self.component.energy_consumption(self.energy_value, self.is_produced)
-        energy_produced_or_consumed = "Consumed"
-        if self.is_produced:
-            energy_produced_or_consumed = "Produced"
-        return f"{energy_produced_or_consumed} {energy_consumed} kWh = {(self.integrated_cost / self.energy_cost.duration_years):.0f} euros of {self.energy_cost} by a {self.component}"
-
 
 class PV(EnergeticComponent):
 
     from energy_house_cost.uncertain import UncertainParameter
     UNCERTAIN_PARAMETERS = {"auto_consumption_ratio": UncertainParameter(
-        default_value=0.4,
-        min_value=0.3,
-        max_value=0.5
+        name = "pv.auto_consumption_ratio",
+        value=0.,
+        min_value=0.,
+        max_value=0.
     )}
 
     def __init__(self, name: str, initial_install_cost: float = 0., maintenance_cost: float = 0.):
         super().__init__(name, initial_install_cost, maintenance_cost, 1.)
+        self._name = name
+        self._uncertain_parameters = {}
+        for k, v in self.UNCERTAIN_PARAMETERS.items():
+            self._uncertain_parameters[f"{self._name}.{k}"] = self.UNCERTAIN_PARAMETERS[k]
 
         sunny_hours = 7.
         max_power_kw = 3.
@@ -75,7 +62,7 @@ class PV(EnergeticComponent):
 
     def energy_consumption(self, energy_value: float, is_produced: bool):
         # TODO take into account variation of power per season
-        return -self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value * self.produced_energy_kwh
+        return -self._uncertain_parameters[f"{self._name}.auto_consumption_ratio"].value * self.produced_energy_kwh
 
     def injected_energy(self):
-        return (1 - self.UNCERTAIN_PARAMETERS["auto_consumption_ratio"].value) * self.produced_energy_kwh
+        return (1 - self._uncertain_parameters[f"{self._name}.auto_consumption_ratio"].value) * self.produced_energy_kwh

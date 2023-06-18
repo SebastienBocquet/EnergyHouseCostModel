@@ -1,27 +1,28 @@
 from typing import List
 
-import numpy as np
+from numpy import inf
 
 
 class UncertainParameter():
 
-    def __init__(self, default_value=0., min_value=None, max_value=None):
-        self.default_value = default_value
-        if min_value is None:
-            self.min_value = default_value
-        else:
-            self.min_value = min_value
-        if max_value is None:
-            self.max_value = default_value
-        else:
-            self.max_value = max_value
-        self.value = default_value
+    def __init__(self, name, value=0., min_value=None, max_value=None):
+        self.name = name
+        self.default_value = value
+        self.valid = False if (min_value is None or max_value is None) else True
+        self.min_value = min_value if min_value is not None else -inf
+        self.max_value = max_value if max_value is not None else inf
+        self._value = value
 
-    # @setter
-    # def value(self, v):
-    #     assert v <= self.max_value
-    #     assert v >= self.min_value
-    #     self.value = v
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        if v > self.max_value or v < self.min_value:
+            raise ValueError(f"Parameter {self.name} is out of bounds: value {v}"
+                             f" should be in [{self.min_value, self.max_value}]")
+        self._value = v
 
 
 def get_uncertain_parameters(energy_items): # List[EnergyItem]):

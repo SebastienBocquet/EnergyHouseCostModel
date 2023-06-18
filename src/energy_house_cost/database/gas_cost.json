@@ -1,0 +1,7 @@
+{
+  "name": "gas_cost",
+  "energy_name": "gas",
+  "profile_type": "linear",
+  "initial_cost_one_kwh": 0.1043,
+  "slope": {"value": 0.1, "min": 0.05, "max": 0.15}
+}
