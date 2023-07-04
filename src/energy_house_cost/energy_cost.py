@@ -21,13 +21,13 @@ class Component():
         self._data = data
         self._uncertain_parameters = {}
         if "name" in data.keys():
-            self._name = data["name"]
+            self.name = data["name"]
         else:
-            self._name = self.__class__.__name__
+            self.name = self.__class__.__name__
 
         for k, v in data.items():
             if k not in self._RESERVED_KEYS:
-                param_name = f"{self._name}.{k}"
+                param_name = f"{self.name}.{k}"
                 param = self._parse_single_key(param_name, v)
                 self._uncertain_parameters[param_name] = param
 
@@ -84,17 +84,17 @@ class EnergyCostProjection(Component):
         self.profile_type = self._data["profile_type"]
         if self.profile_type == "user_points":
             for i, p in enumerate(self._data["points"]):
-                param_name = f"{self._name}.point{i}"
+                param_name = f"{self.name}.point{i}"
                 param = self._parse_single_key(param_name, p)
                 self._uncertain_parameters[param_name] = param
 
     def compute_linear_profile_value(self, year):
-        return self._uncertain_parameters[f"{self._name}.initial_cost_one_kwh"].value + \
-            self._uncertain_parameters[f"{self._name}.slope"].value * year
+        return self._uncertain_parameters[f"{self.name}.initial_cost_one_kwh"].value + \
+            self._uncertain_parameters[f"{self.name}.slope"].value * year
 
     def compute_power_profile_value(self, year):
-        return self._uncertain_parameters[f"{self._name}.initial_cost_one_kwh"].value *\
-            (1 + 0.01 * self._uncertain_parameters[f"{self._name}.percentage_of_increase_per_year"].value)**year
+        return self._uncertain_parameters[f"{self.name}.initial_cost_one_kwh"].value *\
+            (1 + 0.01 * self._uncertain_parameters[f"{self.name}.percentage_of_increase_per_year"].value)**year
 
     def __compute_band_value(self, value_start, value_end):
         return 0.5 * (value_start + value_end)
@@ -125,10 +125,10 @@ class EnergyCostProjection(Component):
             profile = []
             profile.append(
                 (0., self._uncertain_parameters[
-                    f"{self._name}.initial_cost_one_kwh"])
+                    f"{self.name}.initial_cost_one_kwh"])
             )
             for i,p in enumerate(self._data["points"]):
-                value = self._uncertain_parameters[f"{self._name}.point{i}"]
+                value = self._uncertain_parameters[f"{self.name}.point{i}"]
                 profile.append(
                     (p["year"], value)
                 )
@@ -150,10 +150,7 @@ class EnergyCostProjection(Component):
             year_n: int,
             energy_kwh: float
     ):
-        return self._uncertain_parameters[f"{self._name}.injected_price_per_kwh"].value * energy_kwh
-
-    def __repr__(self):
-        return f"{self.energy_name}"
+        return self._uncertain_parameters[f"{self.name}.injected_price_per_kwh"].value * energy_kwh
 
     def plot(self, nb_years, show=False, save=False):
         if show or save:

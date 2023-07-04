@@ -1,10 +1,13 @@
 from dataclasses import dataclass
+from pprint import pprint
 
 import numpy as np
 from gemseo.core.discipline import MDODiscipline
 from matplotlib import pyplot as plt
+from numpy._typing import NDArray
 
 from energy_house_cost.energetic_components import EnergeticComponent
+from energy_house_cost.energetic_components import ProductorComponent
 from energy_house_cost.energy_cost import EnergyCostProjection
 from energy_house_cost.uncertain import get_uncertain_parameters
 from energy_house_cost.uncertain import set_uncertain_parameters
@@ -20,12 +23,17 @@ class EnergyScenario(MDODiscipline):
         for name, param in get_uncertain_parameters(energy_items).items():
             input_data.update({name: param.value})
         self.input_grammar.update_from_data(input_data)
+        # self.output_grammar.update({"total_cost": float,
+        # "cost_per_year_per_component": list})
         self.output_grammar.update({"total_cost": float})
 
     def _run(self):
         input_data = self.get_input_data()
         set_uncertain_parameters(self.__energy_items, input_data)
-        total_cost, _ = compute_cost(self.__energy_items, self.duration_years, show=False)
+        total_cost, cost_per_year_per_component = \
+            compute_cost(self.__energy_items, self.duration_years, show=False)
+        # self.store_local_data(**{"total_cost": total_cost,
+        #     "cost_per_year_per_component": cost_per_year_per_component})
         self.store_local_data(**{"total_cost": total_cost})
 
 
@@ -39,13 +47,11 @@ class EnergyItem:
     integrated_cost: float = 0.
 
     def __repr__(self):
-        energy_consumed = self.component.energy_consumption(self.energy_value, self.is_produced)
-        energy_produced_or_consumed = "Consumed"
-        if self.is_produced:
-            energy_produced_or_consumed = "Produced"
-        return f"{energy_produced_or_consumed} {energy_consumed} kWh =" \
-               f" {(self.integrated_cost / self.energy_cost.duration_years):.0f}" \
-               f" euros (average per year) of {self.energy_cost} by a {self.component}"
+        return f"{self.component.name} {self.component.get_summary(self.component.compute(self.energy_value, self.is_produced))}" \
+               f" of {self.energy_cost.name}\n" \
+               f" which represents {(self.integrated_cost / self.energy_cost.duration_years):.0f}" \
+               f" euros (average per year, including initial cost and maintenance)\n"
+
 
 def component_integrated_cost(energy_item, duration_years):
     """Computes the integrated cost in euros over ``duration_years`` of an energy item.
@@ -59,13 +65,13 @@ def component_integrated_cost(energy_item, duration_years):
         cost_evolution: the cost in euros per year of an energy item.
 
     """
-    energy_kwh = energy_item.component.energy_consumption(energy_item.energy_value, energy_item.is_produced)
-    energy_kwh_injected = energy_item.component.injected_energy()
+    energy_kwh = energy_item.component.compute(energy_item.energy_value, energy_item.is_produced)
     cost_evolution = np.zeros((duration_years))
 
     for year in range(0, duration_years):
         cost_evolution[year] = energy_item.energy_cost.compute(year, energy_kwh)
-        if energy_item.energy_cost.energy_name == "electricity":
+        if isinstance(energy_item.component, ProductorComponent):
+            energy_kwh_injected = energy_item.component.injected_energy()
             cost_evolution[year] -= energy_item.energy_cost.compute_injected(year, energy_kwh_injected)
         if year > 0:
             cost_evolution[year] += energy_item.component.maintenance_cost_per_year
@@ -128,13 +134,14 @@ def compute_cost(energy_items, duration_years, show=True, save=False):
         cost_per_year_per_component[:,i] = cost_evolution_of_component
         total_cost += total_cost_of_component
     print(f"Integrated cost is {total_cost} euros over {duration_years} years.")
-    print(f"Detailed cost in kWh per year is \n{[i for i in energy_items]}")
+    print(f"Detailed cost in kWh per year")
+    pprint([i for i in energy_items])
 
-    if show or save:
-        component_names = []
-        for item in energy_items:
-            component_names.append(item.component.name)
-        plot_integrated_cost_per_component(component_names, cost_per_year_per_component, duration_years)
+    # if show or save:
+    #     component_names = []
+    #     for item in energy_items:
+    #         component_names.append(item.component.name)
+    #     plot_integrated_cost_per_component(component_names, cost_per_year_per_component, duration_years)
 
     return total_cost, cost_per_year_per_component
 

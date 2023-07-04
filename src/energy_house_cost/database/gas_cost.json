@@ -3,5 +3,5 @@
   "energy_name": "gas",
   "profile_type": "linear",
   "initial_cost_one_kwh": 0.1043,
-  "slope": {"value": 0.1, "min": 0.05, "max": 0.15}
+  "slope": {"value": 0.05, "min": 0.02, "max": 0.07}
 }
