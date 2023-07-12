@@ -142,7 +142,7 @@ plt.show()
 dataset.plot(
     "YvsX",
     show=False,
-    x="electricity_cost.curve_1",
+    x="electricity_cost.slope",
     y=name
 )
 # Workaround for HTML rendering, instead of ``show=True``

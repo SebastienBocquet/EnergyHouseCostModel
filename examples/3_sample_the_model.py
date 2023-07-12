@@ -17,7 +17,7 @@ Firstly, we instantiate the :class:`BoltedJointDiscipline` and :class:`Uncertain
 from gemseo.api import configure_logger
 
 from examples.plot_2_define_the_uncertain_space import UncertainSpace
-from house_energy_cost import energetic_scenario
+from house_energy_cost import scenario
 
 LOGGER = configure_logger(message_format="%(levelname)8s: %(message)s", filename="3_sampling.log", filemode="w")
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         "total_cost"
     ]
     scenario = create_scenario(
-        [energetic_scenario], "DisciplinaryOpt", output_names[0], uncertain_space, scenario_type="DOE"
+        [scenario], "DisciplinaryOpt", output_names[0], uncertain_space, scenario_type="DOE"
     )
     for name in output_names[1:]:
         scenario.add_observable(name)

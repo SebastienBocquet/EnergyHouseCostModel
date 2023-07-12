@@ -44,7 +44,7 @@ from gemseo.core.dataset import Dataset
 from matplotlib import pyplot as plt
 
 from energy_house_cost.uncertain import get_uncertain_parameters
-from house_energy_cost import energetic_scenario
+from house_energy_cost import scenario
 
 
 class UncertainSpace(ParameterSpace):
@@ -52,8 +52,8 @@ class UncertainSpace(ParameterSpace):
 
     def __init__(self):
         super().__init__()
-        for name, param in get_uncertain_parameters(energetic_scenario._energy_items).items():
-            if not param.is_constant:
+        for name, param in get_uncertain_parameters(scenario._energy_items).items():
+            if param.is_uncertain:
                 self.add_random_variable(
                     name,
                     "OTTriangularDistribution",
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # %%
     # For instance,
     # a scatter graph plotting these 200 realizations for a pair of variables
-    dataset.plot("Scatter", x="electricity_cost.curve_1", y="electricity_cost.curve_2", show=False, save=False)
+    dataset.plot("Scatter", x="electricity_cost.slope", y="pv.auto_consumption_ratio", show=False, save=False)
     # Workaround for HTML rendering, instead of ``show=True``
     plt.show()
 

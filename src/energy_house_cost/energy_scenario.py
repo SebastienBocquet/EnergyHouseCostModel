@@ -18,7 +18,7 @@ class EnergyScenario(MDODiscipline):
     def __init__(self, energy_items, duration_years):
         super().__init__("energy_scenario", grammar_type="SimpleGrammar")
         self.duration_years = duration_years
-        self.__energy_items = energy_items
+        self._energy_items = energy_items
         input_data = {}
         for name, param in get_uncertain_parameters(energy_items).items():
             input_data.update({name: atleast_1d(param.value)})
@@ -30,9 +30,9 @@ class EnergyScenario(MDODiscipline):
 
     def _run(self):
         input_data = self.get_input_data()
-        set_uncertain_parameters(self.__energy_items, input_data)
+        set_uncertain_parameters(self._energy_items, input_data)
         total_cost, cost_per_year_per_component = \
-            compute_cost(self.__energy_items, self.duration_years, show=False)
+            compute_cost(self._energy_items, self.duration_years, show=False)
         # self.store_local_data(**{"total_cost": total_cost,
         #     "cost_per_year_per_component": cost_per_year_per_component})
         self.store_local_data(**{"total_cost": atleast_1d(total_cost)})
