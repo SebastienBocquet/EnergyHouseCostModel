@@ -46,6 +46,6 @@ def get_uncertain_parameters(energy_items): # List[EnergyItem]):
 def set_uncertain_parameters(energy_items, input_data):
     for e in energy_items:
         for key, param in e.component._uncertain_parameters.items():
-            param.value = input_data[key]
+            param.value = input_data[key][0]
         for key, param in e.energy_cost._uncertain_parameters.items():
-            param.value = input_data[key]
+            param.value = input_data[key][0]

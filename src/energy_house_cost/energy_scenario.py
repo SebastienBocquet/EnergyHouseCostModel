@@ -4,7 +4,7 @@ from pprint import pprint
 import numpy as np
 from gemseo.core.discipline import MDODiscipline
 from matplotlib import pyplot as plt
-from numpy._typing import NDArray
+from numpy import atleast_1d
 
 from energy_house_cost.energetic_components import EnergeticComponent
 from energy_house_cost.energetic_components import ProductorComponent
@@ -21,11 +21,12 @@ class EnergyScenario(MDODiscipline):
         self.__energy_items = energy_items
         input_data = {}
         for name, param in get_uncertain_parameters(energy_items).items():
-            input_data.update({name: param.value})
+            input_data.update({name: atleast_1d(param.value)})
         self.input_grammar.update_from_data(input_data)
+        self.default_inputs = input_data
         # self.output_grammar.update({"total_cost": float,
         # "cost_per_year_per_component": list})
-        self.output_grammar.update({"total_cost": float})
+        self.output_grammar.update_from_data({"total_cost": atleast_1d(0.)})
 
     def _run(self):
         input_data = self.get_input_data()
@@ -34,7 +35,7 @@ class EnergyScenario(MDODiscipline):
             compute_cost(self.__energy_items, self.duration_years, show=False)
         # self.store_local_data(**{"total_cost": total_cost,
         #     "cost_per_year_per_component": cost_per_year_per_component})
-        self.store_local_data(**{"total_cost": total_cost})
+        self.store_local_data(**{"total_cost": atleast_1d(total_cost)})
 
 
 @dataclass

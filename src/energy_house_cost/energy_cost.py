@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -14,12 +15,15 @@ class Component():
 
     _uncertain_parameters = None
 
+    UNCERTAIN_PARAMETERS = None
+
     _RESERVED_KEYS = ["name"]
 
     def __init__(self, data_file_path: Path | None = None):
         data = json.load(open(data_file_path)) if data_file_path is not None else {}
         self._data = data
         self._uncertain_parameters = {}
+
         if "name" in data.keys():
             self.name = data["name"]
         else:

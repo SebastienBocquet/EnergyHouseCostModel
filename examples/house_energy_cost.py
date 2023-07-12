@@ -1,12 +1,12 @@
-from gemseo.core.discipline import MDODiscipline
+from numpy import atleast_1d
 
-from energy_house_cost.database.energy_scenario import EnergyItem
-from energy_house_cost.database.energy_scenario import EnergyScenario
-from energy_house_cost.database.energy_scenario import compute_cost
-from energy_house_cost.database.energy_scenario import \
+from energy_house_cost.energy_scenario import EnergyItem
+from energy_house_cost.energy_scenario import EnergyScenario
+from energy_house_cost.energy_scenario import compute_cost
+from energy_house_cost.energy_scenario import \
     plot_integrated_cost_per_component
 from energy_house_cost.energetic_components import EnergeticComponent
-from energy_house_cost.energetic_components import PV
+from energy_house_cost.database.lib_components import PV
 from energy_house_cost.energy_cost import EnergyCostProjection
 from energy_house_cost.uncertain import get_uncertain_parameters
 from energy_house_cost.database import DB_PATH
@@ -37,18 +37,13 @@ if __name__ == "__main__":
         EnergyItem(0., pv, electricity_cost, is_produced=True)]
     # EnergyItem(PRODUCED_KWH_PER_YEAR_HEATING, heat_pump, electricity_cost, is_produced=True)
 
-    # TODO add uncertain params as defualt_inputs.
-    input_data = {}
-    for name, param in get_uncertain_parameters(energy_items_1).items():
-        input_data.update({name: param.value})
-
     scenario = EnergyScenario(energy_items_1, DURATION_YEARS)
-    scenario.execute(input_data)
+    scenario.execute()
     output_data = scenario.get_output_data()
-    total_cost = output_data["total_cost"]
+    total_cost = output_data["total_cost"][0]
 
     # Cost per component is not an output of the scenario (due to grammar validation problem
-    # since it is an array of array). SO it is obtained by calling directly compute_cost.
+    # since it is an array of array). So it is obtained by calling directly compute_cost.
     _, cost_per_year_per_component = compute_cost(energy_items_1, DURATION_YEARS)
     component_names = []
     for item in energy_items_1:
